@@ -6,6 +6,6 @@ Resumen:<br>
 
 Autores:<br> 
 
-Ana Laura Pachecho López 
-Erick Eduardo Mendoza Ruiz 
-Jonathan Jiménez Marchand 
+Ana Laura Pachecho López <br> 
+Erick Eduardo Mendoza Ruiz <br> 
+Jonathan Jiménez Marchand <br> 
