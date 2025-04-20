@@ -1,0 +1,225 @@
+----- EJE TEMÁTICO: Gobernanza -----
+---------- 	Índice de Desarrollo Humano ----------
+-- Variables IDH 2010 y 2020 a nivel municipal, se crean tablas con geometrías para utilzarse como información geoespacial -- 
+
+-- casteo de la columna idh 2020 estatal-- 
+
+ALTER TABLE gobernanza.idh_est_20 ALTER COLUMN idh TYPE float4 USING idh::float4;
+
+-- se calculo promedio de idh 2020 a partir de los totales estatales -- 
+-- y se crea nueva tabla, la cual, será utilizada como información cartorgáfica --
+
+create table gobernanza.idh20_est as
+SELECT 
+        hf.cveent,
+        hf.estado,
+        avg(hf.idh) AS idh2020
+    FROM gobernanza.idh_est_20 hf 
+    GROUP BY hf.cveent, hf.estado;
+
+-- se crea tabla con geometrías para el IDH 2020 estatal  --
+
+    CREATE table gobernanza.idh2020_est AS
+SELECT 
+    cd.*,  -- tabla sin geometria
+  	e.geom 	 -- tabla con geometría
+FROM 
+    gobernanza."idh20_est"cd 
+JOIN 
+    public.estadosc e
+    ON e.cve_ent= cd.cveent;
+    
+    
+ALTER TABLE gobernanza.idh20_est ALTER COLUMN cveent TYPE int4 USING cveent::int4;
+
+-- se establece la columna gdh que representa el grado de desarrollo humano para utilizarse como rangos -- 
+alter table gobernanza.idh20_est add column gdh varchar;
+
+-- se castean las columnas "estados e IDH 2010 estatal" -- 
+ALTER TABLE public.estadosc ALTER COLUMN cve_ent TYPE int4 USING cve_ent::int4;
+
+ALTER TABLE gobernanza.idh_2010_est ALTER COLUMN cveent_1 TYPE int4 USING cveent_1::int4;
+
+-- se busca el total de municipios --
+
+SELECT COUNT(DISTINCT municipio) AS total_municipios
+FROM gobernanza.idh_2010;
+
+SELECT DISTINCT municipio
+FROM gobernanza.idh_2010;
+
+SELECT COUNT(DISTINCT municipio) AS total_municipios
+FROM gobernanza.idh_20;
+
+-- Se identificó que el idh 2020 municipal solo contiene 858 municipios de 2476 registrados en ese periodo -- 
+-- para el periodo 2010 tiene 2317 de 2456 que había para ese año --	 
+
+-- Por lo anterior se decide seguir la exploración a escala estatal, no obstante se presentan los resultados municipales --
+
+-- VARIABLES IDH 2020 Y 2010 ESTATAL --
+
+-- casteo de la columna idh 2020 estatal-- 
+
+ALTER TABLE gobernanza.idh_est_20 ALTER COLUMN idh TYPE float4 USING idh::float4;
+
+-- se calculo promedio de idh 2020 a partir de los totales estatales -- 
+-- y se crea nueva tabla, la cual, será utilizada como información cartorgáfica --
+
+create table gobernanza.idh20_est as
+SELECT 
+        hf.cveent,
+        hf.estado,
+        avg(hf.idh) AS idh2020
+    FROM gobernanza.idh_est_20 hf 
+    GROUP BY hf.cveent, hf.estado;
+
+-- ¿En 2020 cuántos estados de la República Mexicana presentaron un IDH alto, medio y bajo?
+select COUNT(*), idh.gdh
+from gobernanza.idh2020_est idh 
+group by idh.gdh 
+order by COUNT(*) desc;
+
+-- ¿En el mismo periodo cuáles Estados de la República Mexicana tienen IDH medio y muy alto? se pide que los ordene de forma descendente--
+select estado, idh.gdh
+from gobernanza.idh2020_est idh 
+WHERE idh.gdh IN ('MEDIO', 'MUY ALTO')
+group by estado, idh.gdh 
+order by COUNT(*) desc;
+
+-- ¿En este periodo cuáles Estados de la República Mexicana tienen IDH BAJO? --
+select estado, gdh 
+FROM gobernanza.idh2020_est idh
+WHERE idh.gdh = 'BAJO'
+GROUP BY estado, idh.gdh;
+
+-- para este periodo no se reconoce ningun estado con IDH bajo, veamos los que tuvieron IDH alto --
+
+select estado, gdh
+FROM gobernanza.idh2020_est idh
+WHERE idh.gdh = 'ALTO'
+GROUP BY estado, idh.gdh
+order by COUNT(*) asc;
+
+-- Se busca conocer el valor del idh alto y que los ordene por estados de mayor a menor--
+
+SELECT estado, idh.gdh, idh.idh2020 
+FROM gobernanza.idh2020_est idh
+WHERE idh.gdh = 'ALTO'
+group by estado, idh.gdh, idh.idh2020 
+order by COUNT(*) asc;
+
+-- Agascalientes y Baja California son los dos municipios del grado de desarrollo humano mejor calificados --
+
+-- Hasta aqui se exploro esta variable, veamos diiferencias con respecto a 2010--
+
+-- Exploracíón del IDH municipal a partir de los mínimos y máximos con los datos que se tienen de ambos periodos --
+
+
+-- ¿En este periodo cuántos y cuáles municipios presentaron de la República Mexicana tienen IDH BAJO? --
+
+SELECT COUNT(DISTINCT municipio) AS total_municipios
+FROM gobernanza.idh_2010
+WHERE gdh = 'BAJO';
+
+SELECT municipio, idmun10.idh, idmun10.gdh, COUNT(*) as record_count
+FROM gobernanza.idh_2010 idmun10
+WHERE idmun10.gdh = 'BAJO'
+GROUP BY municipio, idmun10.idh, idmun10.gdh
+ORDER BY idh DESC;
+
+--son 259 con este valor, veamos cuales son los más bajos y los máximos de esta categoria--
+
+SELECT municipio, estado, idmun10.gdh, idmun10.idh, COUNT(*) as record_count
+FROM gobernanza.idh_2010 idmun10
+WHERE idmun10.gdh = 'BAJO'
+GROUP BY municipio, estado, idmun10.gdh, idmun10.idh
+ORDER BY idh asc
+limit 10;
+
+-- El décimo municipio con el idh más bajo en 2010 fuen Santa Lucía Miahuatlan en Oaxaca con un valor de 0.462--
+-- El municipio más bajo de este periodo es Batopilas de Manuel Gomez Morin en Chihuahua con 0.397 puntos--  
+-- los principales estados en los que se ubican en Oaxaca y Chiapas--
+
+SELECT municipio, estado, gdh, idh, COUNT(*) as record_count
+FROM gobernanza.idh_2010
+WHERE gdh = 'BAJO'
+GROUP BY municipio, estado, gdh, idh
+ORDER BY idh ASC
+LIMIT 50;
+
+-- En esta consulta se revisan los 50 municipios con el idh más bajo de 2010--
+--En la siguiente consulta se muestran los 25 municipios con el puntaje más alto de este grado de desarrollo--
+
+SELECT municipio, estado, gdh, idh 
+FROM gobernanza.idh_2010
+WHERE gdh = 'BAJO'
+GROUP BY municipio, estado, gdh, idh
+ORDER BY idh desc
+limit 25;
+
+--todos arriba de 0.547 hasta 0.55, este valor lo comparten 5 municipios 4 de Oaxaca y Chemax en Yucatán--
+
+-- Ahora veamos cuántos municipios se encuentran en un grado de desarrollo alto -- 
+
+SELECT COUNT(DISTINCT municipio) AS total_municipios
+FROM gobernanza.idh_2010
+WHERE gdh = 'MUY ALTO';
+
+-- Son 61 municipios, veamos cuales --
+select municipio, estado, gdh, idh 
+FROM gobernanza.idh_2010
+WHERE gdh = 'MUY ALTO'
+GROUP BY municipio, estado, gdh, idh
+ORDER BY idh desc
+limit 61;
+
+-- El municipio con mayor idh en 2010 fue Benito Juárez en la CDMX, 
+
+SELECT municipio, estado, gdh, idh 
+FROM gobernanza.idh_2010
+WHERE gdh = 'MUY ALTO'
+GROUP BY municipio, estado, gdh, idh
+ORDER BY idh ASC
+limit 61;
+
+-- veamos el agrupamiento por estado de este grado muy alto--
+SELECT municipio, estado, gdh, idh 
+FROM gobernanza.idh_2010
+WHERE gdh = 'MUY ALTO'
+GROUP BY municipio, estado, gdh, idh
+ORDER BY estado, idh 
+LIMIT 61;
+
+--Totolac en Tlaxcala es el municipio más bajo de este grado de desarrollo con un valor de 0.801--
+
+
+SELECT municipio, estado, gdh, idh 
+FROM gobernanza.idh_2010
+WHERE gdh = 'MUY ALTO'
+GROUP BY municipio, estado, gdh, idh
+ORDER BY idh desc
+LIMIT 25;
+
+-- en esta consulta se pregunta cuantos municipios tuvo cada entidad federativa que presentaron un grado de desarrollo humano muy alto--
+-- Se identifica a la Ciudad de México con 13 alcaldías, seguido de Oaxaca con 8 y el Estado de México con 7--
+SELECT estado, COUNT(DISTINCT municipio) AS num_municipios
+FROM gobernanza.idh_2010
+WHERE gdh = 'MUY ALTO'
+GROUP BY estado
+ORDER BY num_municipios DESC;
+
+--veamos cuales alcaldías y de mayor a menor--
+
+SELECT municipio, estado, gdh, idh 
+FROM gobernanza.idh_2010
+WHERE gdh = 'MUY ALTO' AND estado = 'CDMX'
+ORDER BY idh desc
+LIMIT 61;
+
+
+
+-- ¿En 2020 cuántos estados de la República Mexicana presentaron un IDH alto, medio y bajo?
+select COUNT(*), idh.gdh
+from gobernanza.idh2020_est idh 
+group by idh.gdh 
+order by COUNT(*) desc;
