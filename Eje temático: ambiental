@@ -1,0 +1,107 @@
+----- EJE TEMÁTICO: Ambiental -----
+-----Preprocesamiento ambiental----- 
+--Al final todas estas consultas fueron cargadas en el esquema "ambiental"
+--Estos son casteos de la precipitación del 2012
+
+ALTER TABLE ambiental.nc12pp ALTER COLUMN lluviatotalmensual_acum TYPE float4 USING lluviatotalmensual_acum::float4;
+ALTER TABLE ambiental.nc12pp ALTER COLUMN latitud TYPE float4 USING latitud::float4;
+ALTER TABLE ambiental.nc12pp ALTER COLUMN longitud TYPE float4 USING longitud::float4;
+
+
+--Dibujamos cada estación en el mapa pero solo con el dato de precipitación, eliminamos los dos vectores restantes
+CREATE TABLE ambiental.pp12 AS  
+SELECT  
+    n.*,  
+    ST_SetSRID(ST_MakePoint(n.longitud, n.latitud), 4326) AS geom  
+FROM ambiental.nc12pp n;
+
+--Dibujamos cada estación en el mapa pero solo con el dato de temperatura máxima, eliminamos los dos vectores restantes
+CREATE TABLE ambiental.mx12 AS  
+SELECT  
+    n.*,  
+    ST_SetSRID(ST_MakePoint(n.longitud, n.latitud), 4326) AS geom  
+FROM ambiental.nc12pp n;
+
+--Estos son casteos de la temperatura máxima del 2012
+ALTER TABLE ambiental.nc12mx ALTER COLUMN temperaturamximaextrema_acum TYPE float4 USING temperaturamximaextrema_acum::float4;
+ALTER TABLE ambiental.nc12mx ALTER COLUMN latitud TYPE float4 USING latitud::float4;
+ALTER TABLE ambiental.nc12mx ALTER COLUMN longitud TYPE float4 USING longitud::float4;
+
+CREATE TABLE ambiental.mx12 AS  
+SELECT  
+    n.*,  
+    ST_SetSRID(ST_MakePoint(n.longitud, n.latitud), 4326) AS geom  
+FROM ambiental.nc12mx n;
+
+--Estos son casteos de la temperatura mínima del 2012
+ALTER TABLE ambiental.nc12mn ALTER COLUMN temperaturamnimaextrema_acum TYPE float4 USING temperaturamnimaextrema_acum::float4;
+ALTER TABLE ambiental.nc12mn ALTER COLUMN latitud TYPE float4 USING latitud::float4;
+ALTER TABLE ambiental.nc12mn ALTER COLUMN longitud TYPE float4 USING longitud::float4;
+
+CREATE TABLE ambiental.mn12 AS  
+SELECT  
+    n.*,  
+    ST_SetSRID(ST_MakePoint(n.longitud, n.latitud), 4326) AS geom  
+FROM ambiental.nc12mn n;
+
+-- Ahora vamos a repetir TODO el proceso para los datos de AMLO 
+--Estos son casteos de la precipitación del 2022. 
+
+ALTER TABLE ambiental.nc22pp ALTER COLUMN lluviatotalmensual_acum TYPE float4 USING lluviatotalmensual_acum::float4;
+ALTER TABLE ambiental.nc22pp ALTER COLUMN latitud TYPE float4 USING latitud::float4;
+ALTER TABLE ambiental.nc22pp ALTER COLUMN longitud TYPE float4 USING longitud::float4;
+
+
+--Dibujamos cada estación en el mapa pero solo con el dato de precipitación, eliminamos los dos vectores restantes
+CREATE TABLE ambiental.pp22 AS  
+SELECT  
+    n.*,  
+    ST_SetSRID(ST_MakePoint(n.longitud, n.latitud), 4326) AS geom  
+FROM ambiental.nc22pp n;
+
+--Casteos para temperatura mínima 2022
+ALTER TABLE ambiental.nc22mn ALTER COLUMN temperaturamnimaextrema_acum TYPE float4 USING temperaturamnimaextrema_acum::float4;
+ALTER TABLE ambiental.nc22mn ALTER COLUMN latitud TYPE float4 USING latitud::float4;
+ALTER TABLE ambiental.nc22mn ALTER COLUMN longitud TYPE float4 USING longitud::float4;
+
+--Dibujamos cada estación en el mapa pero solo con el dato de temperatura máxima, eliminamos los dos vectores restantes
+CREATE TABLE ambiental.mn22 AS  
+SELECT  
+    n.*,  
+    ST_SetSRID(ST_MakePoint(n.longitud::double precision, n.latitud::double precision), 4326) AS geom  
+FROM ambiental.nc22mn n;
+
+--Estos son casteos de la temperatura máxima del 2012
+ALTER TABLE ambiental.nc22mx ALTER COLUMN temperaturamximaextrema_acum TYPE float4 USING temperaturamximaextrema_acum::float4;
+ALTER TABLE ambiental.nc22mx ALTER COLUMN latitud TYPE float4 USING latitud::float4;
+ALTER TABLE ambiental.nc22mx ALTER COLUMN longitud TYPE float4 USING longitud::float4;
+
+CREATE TABLE ambiental.mx22 AS  
+SELECT  
+    n.*,  
+    ST_SetSRID(ST_MakePoint(n.longitud::double precision, n.latitud::double precision), 4326) AS geom  
+FROM ambiental.nc22mn n;
+
+
+- Variables IDH 2010 y 2020 a nivel municipal, se crean tablas con geometrías para utilzarse como información geoespacial -- 
+
+CREATE table gobernanza.idh_2010 AS
+SELECT 
+    cd.*,  -- tabla sin geometria
+  	e.geom 	 -- tabla con geometría
+FROM 
+    gobernanza."idh_nal_10" cd 
+JOIN 
+    public.mun e
+    ON e.cvegeo= cd.cvegeo;
+
+
+CREATE table gobernanza.idh_20 AS
+SELECT 
+    cd.*,  -- tabla sin geometria
+  	e.geom 	 -- tabla con geometría
+FROM 
+    gobernanza."idh_nal_20" cd 
+JOIN 
+    public.mun e
+    ON e.cvegeo= cd.cvegeo;
