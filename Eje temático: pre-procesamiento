@@ -1,0 +1,116 @@
+create extension postgis;
+------ P R E P R O C E S A M I E N T O ------
+-- PASO 1. Se va acondicionar la tabla con geometrías para ser utilizada con el resto de las tablas de los diferentes ejes temáticos,
+----- se quitarán los valores repetidos, también se van a eliminar los valores nulos y se le asignará la llave primaria a "cve_ent".
+
+create schema economia;
+create schema violencia;
+create schema pp;
+create schema educacion;
+create schema medio_ambiente;
+
+ALTER SCHEMA pp RENAME TO gobernanza;
+
+
+
+ALTER TABLE public.estadosc  ALTER COLUMN "cve_ent" SET NOT NULL;
+ALTER TABLE public.estadosc  ADD UNIQUE ("cve_ent");
+ALTER TABLE public.estadosc ADD PRIMARY KEY ("cve_ent");
+
+-- PASO 2. Se hará el casteo de la columna cve_ent del esquema public de la tabla estadosc, que es la tabla con geometrías para que coincida
+----- con el resto de nuestras tablas.
+ALTER TABLE public.estadosc ALTER COLUMN cve_ent TYPE int4 USING cve_ent::int4;
+
+-- PASO 3. Se repite el paso anterior, pero para la tabla que se dese utilizar, en este caso comenzaremos con la tabla de "eco.pob_oc_2009"
+----- la cual corresponde a la población ocupada en México del año 2009.
+
+ALTER TABLE economia."eco.pob_oc_2009" ALTER COLUMN cve_ent TYPE int4 USING cve_ent::int4;
+
+-- PASO 4. Ya que ambas tablas cuentan con el mismo formato de valor en la columna "cve_ent" se puede hacer la unión entre ellas, para que
+----- la tabla de población ocupada tenga geometrías.
+
+CREATE table economia.pob_ocupada_2009 AS
+SELECT 
+    po.*,  -- tabla sin geometria
+  	e.geom 	 -- tabla con geometría
+FROM 
+     economia."eco.pob_oc_2009" po
+JOIN 
+    public.estadosc e
+    ON e.cve_ent = po.cve_ent;
+
+-- PASO 5. Ahora repetiremos el paso 4 y 5 para la tabla de eco.pob_oc_2019 la cual corresponde a la población ocupada 2019
+
+ALTER TABLE economia."eco.pob_o_2019" ALTER COLUMN cve_ent TYPE int4 USING cve_ent::int4;
+
+CREATE table economia.pob_ocupada_2019 AS
+SELECT 
+    poc.*,  -- tabla sin geometria
+  	e.geom 	 -- tabla con geometría
+FROM 
+    economia."eco.pob_o_2019" poc
+JOIN 
+    public.estadosc e
+    ON e.cve_ent = poc.cve_ent;
+
+-- PASO 6. Para el eje temático de educación se va repetir el mismo proceso cambio de tipo de dato y la unión con la tabla con geometrías, 
+----- esto para el caso de las tablas de alfabetismo y escolaridad de los años 2010 y 2020.
+
+---Alfabetismo 2010
+ALTER TABLE educacion."e.alfabetismo_2010" ALTER COLUMN cve_ent TYPE int4 USING cve_ent::int4;
+
+CREATE table educacion.alfabetismo_2010 AS
+SELECT 
+    al.*,  -- tabla sin geometria
+  	e.geom 	 -- tabla con geometría
+FROM 
+   educacion."e.alfabetismo_2010" al
+JOIN 
+    public.estadosc e
+    ON e.cve_ent = al.cve_ent;
+
+--Alfabetismo 2020
+
+ALTER TABLE educacion."e.alfabetismo_2020" ALTER COLUMN cve_ent TYPE int4 USING cve_ent::int4;
+
+CREATE table educacion.alfabetismo_2020 AS
+SELECT 
+    alf.*,  -- tabla sin geometria
+  	e.geom 	 -- tabla con geometría
+FROM 
+   educacion."e.alfabetismo_2020" alf
+JOIN 
+    public.estadosc e
+    ON e.cve_ent = alf.cve_ent;
+
+--Escolaridad 2010
+ALTER TABLE educacion."e.escolaridad_2010" ALTER COLUMN cve_ent TYPE int4 USING cve_ent::int4;
+ALTER TABLE educacion.escolaridad_2010 ALTER COLUMN "sin escolaridad" TYPE int4 USING "sin escolaridad"::int4;
+
+
+CREATE table educacion.escolaridad_2010 AS
+SELECT 
+    es.*,  -- tabla sin geometria
+  	e.geom 	 -- tabla con geometría
+FROM 
+   educacion."e.escolaridad_2010" es
+JOIN 
+    public.estadosc e
+    ON e.cve_ent = es.cve_ent;
+
+--Escolaridad 2020
+ALTER TABLE educacion."e.escolaridad_2020" ALTER COLUMN cve_ent TYPE int4 USING cve_ent::int4;
+ALTER TABLE educacion.escolaridad_2020 ALTER COLUMN "sin escolaridad" TYPE int4 USING "sin escolaridad"::int4;
+
+CREATE table educacion.escolaridad_2020 AS
+SELECT 
+    esc.*,  -- tabla sin geometria
+  	e.geom 	 -- tabla con geometría
+FROM 
+   educacion."e.escolaridad_2020" esc
+JOIN 
+    public.estadosc e
+    ON e.cve_ent = esc.cve_ent;
+
+
+
