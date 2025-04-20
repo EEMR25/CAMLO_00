@@ -1,0 +1,405 @@
+import streamlit as st
+import threading
+import http.server
+import socketserver
+import os
+import time
+import pandas as pd
+from datetime import datetime
+
+# ------------------------- CONFIGURACIÓN -------------------------
+st.set_page_config(
+    page_title="CAMLOVISOR 3.0 | SIG",
+    page_icon="🌎",
+    layout="wide"
+)
+
+# Configuración de mapas
+MAP_CONFIG = {
+    "homicidios": {
+        "path": r"C:\Users\eredm\Desktop\CentroGeo\II\SIG\Proyecto\Visor\static\mapas\cia\homi",
+        "port": 8507
+    },
+    "desaparecidos": {
+        "path": r"C:\Users\eredm\Desktop\CentroGeo\II\SIG\Proyecto\Visor\static\mapas\cia\desaparecidos",
+        "port": 8503
+    },
+    "im": {
+        "path": r"C:\Users\eredm\Desktop\CentroGeo\II\SIG\Proyecto\Visor\static\mapas\economia\im",
+        "port": 8504
+    },
+    "ppt": {
+        "path": r"C:\Users\eredm\Desktop\CentroGeo\II\SIG\Proyecto\Visor\static\mapas\cc\ppt",
+        "port": 8505
+    },
+    "usv": {
+        "path": r"C:\Users\eredm\Desktop\CentroGeo\II\SIG\Proyecto\Visor\static\mapas\cc\usv",
+        "port": 8506
+    },
+    "eg": {
+        "path": r"C:\Users\eredm\Desktop\CentroGeo\II\SIG\Proyecto\Visor\static\mapas\gob\eg",
+        "port": 8508
+    },
+    "idh": {
+        "path": r"C:\Users\eredm\Desktop\CentroGeo\II\SIG\Proyecto\Visor\static\mapas\gob\idh",
+        "port": 8509
+    },
+    "al": {
+        "path": r"C:\Users\eredm\Desktop\CentroGeo\II\SIG\Proyecto\Visor\static\mapas\educacion\alfabetismo",
+        "port": 8510
+    },
+    "es": {
+        "path": r"C:\Users\eredm\Desktop\CentroGeo\II\SIG\Proyecto\Visor\static\mapas\educacion\escolaridad",
+        "port": 8511
+    },
+    "po": {
+        "path": r"C:\Users\eredm\Desktop\CentroGeo\II\SIG\Proyecto\Visor\static\mapas\economia\po",
+        "port": 8512
+    }
+}
+
+# Datos para visualización
+HOMICIDIOS_DATA = {
+    "Período": ["AMLO (2018-2024)", "Calderón (2006-2012)"],
+    "Total": [366855, 242288],
+    "Hombres": [322461, 216584],
+    "Mujeres": [40524, 24532],
+}
+
+HOMICIDIOS_EST = {
+    "Entidad": [
+        "Aguascalientes", "Baja California", "Baja California Sur", "Campeche", "Coahuila de Zaragoza", "Colima",
+        "Chiapas", "Chihuahua", "Ciudad de México", "Durango",
+        "Guanajuato", "Guerrero", "Hidalgo", "Jalisco", "México", "Michoacán de Ocampo", "Morelos", "Nayarit",
+        "Nuevo León", "Oaxaca",
+        "Puebla", "Querétaro", "Quintana Roo", "San Luis Potosí", "Sinaloa", "Sonora", "Tabasco", "Tamaulipas",
+        "Tlaxcala", "Veracruz de Ignacio de la Llave",
+        "Yucatán", "Zacatecas"
+    ],
+    "AMLO": [
+        544, 16981, 545, 496, 1160, 4255, 3306, 8803, 6030, 461,
+        24532, 10032, 2209, 13240, 12350, 13582, 2832, 1314, 5681, 3248,
+        3456, 873, 6204, 2789, 6662, 6615, 2641, 2512, 1334, 3625,
+        1323, 5514
+    ],
+    "CALDERÓN": [
+        387, 5848, 242, 269, 2865, 720, 1661, 20480, 6014, 467,
+        2758, 10194, 778, 5804, 12317, 4533, 2192, 1870, 4824, 2048,
+        2267, 514, 868, 1734, 3833, 3131, 1084, 4395, 432, 3885,
+        464, 1195
+    ]
+}
+
+DESAPARECIDOS_DATA = {
+    "AMLO": 65121,
+    "Calderón": 27764
+}
+
+DESAPARECIDOS_EST = {
+    "Entidad": [
+        "Aguascalientes", "Baja California", "Baja California Sur", "Campeche", "Coahuila de Zaragoza", "Colima",
+        "Chiapas", "Chihuahua", "Ciudad de México", "Durango",
+        "Guanajuato", "Guerrero", "Hidalgo", "Jalisco", "México", "Michoacán de Ocampo", "Morelos", "Nayarit",
+        "Nuevo León", "Oaxaca",
+        "Puebla", "Querétaro", "Quintana Roo", "San Luis Potosí", "Sinaloa", "Sonora", "Tabasco", "Tamaulipas",
+        "Tlaxcala", "Veracruz de Ignacio de la Llave",
+        "Yucatán", "Zacatecas"
+    ],
+    "AMLO": [
+        234, 2730, 698, 73, 825, 771, 119, 1100, 4237, 469, 1927,
+        1601, 762, 7947, 9414, 3988, 1358, 1261, 3355, 439, 1547,
+        339, 1211, 873, 2577, 2550, 2048, 4694, 106, 3048, 94, 2726
+    ],
+    "CALDERÓN": [
+        87, 892, 207, 8, 2117, 482, 53, 119, 804, 424, 297, 543, 226,
+        2608, 4694, 718, 120, 403, 2023, 183, 646, 86, 100, 261, 952,
+        466, 33, 5043, 16, 1541, 54, 558
+    ]
+}
+
+CC_DATA = {
+    "Parámetro": ["Promedio", "Promedio", "Extrema", "Extrema"],
+    "Año": ["2012", "2022", "2012", "2022"],
+    "Precipitación": [1037.9, 598.5, 6545, 12045],
+    "T Máxima": [30.22, 30.8, 42.9, 43.8],
+    "T Mínima": [9.6, 10, -7.5, -5.7],
+}
+
+IM_EST = {
+    "Entidad": [
+        "Aguascalientes", "Baja California", "Baja California Sur", "Campeche", "Coahuila de Zaragoza", "Colima",
+        "Chiapas", "Chihuahua", "Ciudad de México", "Durango",
+        "Guanajuato", "Guerrero", "Hidalgo", "Jalisco", "México", "Michoacán de Ocampo", "Morelos", "Nayarit",
+        "Nuevo León", "Oaxaca",
+        "Puebla", "Querétaro", "Quintana Roo", "San Luis Potosí", "Sinaloa", "Sonora", "Tabasco", "Tamaulipas",
+        "Tlaxcala", "Veracruz de Ignacio de la Llave",
+        "Yucatán", "Zacatecas"
+    ],
+    "AMLO": [
+        0.85, 0.90, 0.88, 0.77, 0.87, 0.87, 0.70, 0.79, 0.93, 0.78, 0.80, 0.63, 0.78, 0.83, 0.83, 0.79, 0.83, 0.79,
+        0.87, 0.71, 0.74, 0.78, 0.83, 0.75, 0.81, 0.85, 0.81, 0.83, 0.85, 0.75, 0.75, 0.82
+    ],
+    "CALDERÓN": [
+        0.90, 0.92, 0.92, 0.85, 0.91, 0.91, 0.80, 0.84, 0.94, 0.86, 0.88, 0.77, 0.86, 0.89, 0.89, 0.86, 0.88, 0.85,
+        0.91, 0.81, 0.83, 0.87, 0.88, 0.84, 0.88, 0.89, 0.87, 0.87, 0.90, 0.83, 0.84, 0.88
+
+    ]
+}
+
+USV_DATA = {
+    "USV": ["Artificial", "Bosque", "Selva", "Matorrales y pastizales"],
+    "2010 (%)": [19.35, 13.81, 17.34, 49.5],
+    "2020 (%)": [20.76, 16.38, 17.35, 45.52]
+}
+
+EG_DATA = {
+    "Categoría": [
+        "Total","Participaciones federales","Educación Pública","Plazas de educación pública","Defensa nacional",
+        "Nuevas plazas de defensa nacional","Marina","Nuevas plazas Marina","Plazas seguridad pública","Medio ambiente","Agricultura y Desarrollo",
+        "Sueldo presidencial"
+    ],
+    "2007": [
+        "2260 miles de mdp (100%)","14.7008%","6.7228%","0.0150%","1.4246%","0.0023%",
+        "0.4845%","0.0001%","0.1008%","1.2832%","2.5829%","$156467"
+    ],
+    "2019": ["5838%","12.6028%","5.2757%","0.0000%","1.6045%","0.0343%","0.5496%","0.0000%","0.0000%","0.5313%","1.1208%",
+             "$135488"
+    ]
+}
+
+
+# ------------------------- FUNCIONES MEJORADAS -------------------------
+def init_server(map_key):
+    """Inicia un servidor HTTP para el mapa especificado, cerrando cualquier servidor previo"""
+    config = MAP_CONFIG[map_key]
+
+    # Detener servidor anterior si existe
+    if 'current_server' in st.session_state:
+        try:
+            st.session_state.current_server.shutdown()
+            st.session_state.current_server.server_close()
+        except:
+            pass
+
+    # Iniciar nuevo servidor
+    os.chdir(config["path"])
+    handler = http.server.SimpleHTTPRequestHandler
+    httpd = socketserver.TCPServer(("", config["port"]), handler)
+    st.session_state.current_server = httpd
+
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    st.session_state.current_map = map_key
+
+def show_map_with_loading(map_key, success_message):
+    """Muestra el mapa con barra de carga y datos adicionales"""
+    config = MAP_CONFIG[map_key]
+
+    # Iniciar servidor para el mapa actual
+    init_server(map_key)
+
+    # Barra de carga
+    with st.spinner(f"Cargando {map_key.replace('_', ' ').title()}..."):
+        progress_bar = st.progress(0)
+        for percent in range(100):
+            time.sleep(0.01)
+            progress_bar.progress(percent + 1)
+
+        # Mostrar mapa
+        st.components.v1.iframe(
+            f"http://localhost:{config['port']}/index.html",
+            height=650,
+            scrolling=True
+        )
+        st.success(success_message)
+
+        # ---- DATOS ADICIONALES ----
+        if map_key == "homicidios":
+            st.subheader("📊 Métricas Comparativas")
+            df = pd.DataFrame(HOMICIDIOS_DATA)
+            st.dataframe(
+                df.style.highlight_max(axis=0, color="#FF0000"),
+                use_container_width=True
+            )
+
+            st.subheader("📊 Homicidios por Estado")
+            df_estados = pd.DataFrame(HOMICIDIOS_EST)
+            st.dataframe(
+                df_estados.style.highlight_max(axis=0, color="#FF0000"),
+                use_container_width=True
+            )
+
+            st.caption("Fuente: https://www.inegi.org.mx/sistemas/olap/consulta/general_ver4/MDXQueryDatos.asp?c=")
+
+        elif map_key == "desaparecidos":
+            st.subheader("🔍 Comparación")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Desaparecidos (AMLO)", f"{DESAPARECIDOS_DATA['AMLO']:,}")
+            with col2:
+                st.metric("Desaparecidos (Calderón)", f"{DESAPARECIDOS_DATA['Calderón']:,}")
+
+            st.caption(f"*Datos acumulados hasta {datetime.now().strftime('%d/%m/%Y')}")
+
+            st.subheader("📊 Desaparecidos por Estado")
+            df_estados = pd.DataFrame(DESAPARECIDOS_EST)
+            st.dataframe(
+                df_estados.style.highlight_max(axis=0, color="#FF0000"),
+                use_container_width=True
+            )
+
+            st.caption("Fuente: https://versionpublicarnpdno.segob.gob.mx/Dashboard/Index")
+
+        elif map_key == "im":
+            st.subheader("🔍 Comparación")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Índice de marginación(AMLO)", "0.76")
+            with col2:
+                st.metric("Calderón", "0.84")
+
+            st.caption("Entre menor cifra, más marginación")
+
+            st.subheader("📊 Índice de Marginación")
+            df_im = pd.DataFrame(IM_EST)
+            st.dataframe(
+                df_im.style.highlight_min(axis=0, color="#FF0000"),
+                use_container_width=True
+            )
+
+            st.caption("sbasc = Porcentaje de la población de 15 años o más sin primaria completa."
+                       "ovsde = Porcentaje de ocupantes en viviendas sin drenaje ni excusado"
+                        "ovsee = Porcentaje de ocupantes en viviendas sin energía eléctrica"
+                        "ovsae = Porcentaje de ocupantes en viviendas sin agua entubada"
+                        "ovpt = Porcentaje de viviendas con piso de tierra"
+                        "vhac =  Porcentaje de viviendas con algún nivel de hacinamiento"
+                        "imn = Índice de marginación de 0 a 1 "
+                        "Fuente: https://smn.conagua.gob.mx/es/climatologia/informacion-climatologica/normales-climatologicas-por-estado"
+                       )
+
+        elif map_key == "ppt":
+            st.subheader("📊 Precipitación y temperatura extrema")
+            df = pd.DataFrame(CC_DATA)
+            st.dataframe(
+                df.style.highlight_max(axis=0, color="#FF0000"),
+                use_container_width=True
+            )
+
+            st.caption("""
+            Datos comparativos de cambio climático entre los años 2012 y 2022.
+            Se muestran promedios y valores extremos de precipitación y temperaturas.
+            Fuente: https://smn.conagua.gob.mx/es/climatologia/informacion-climatologica/normales-climatologicas-por-estado
+            """)
+        elif map_key == "usv":
+            st.subheader("📊 Cambio de uso de suelo y vegetación")
+            df = pd.DataFrame(USV_DATA)
+            st.dataframe(
+                df.style.highlight_max(axis=0, color="#FF0000"),
+                use_container_width=True
+            )
+
+            st.caption("Fuente: https://smn.conagua.gob.mx/es/climatologia/informacion-climatologica/normales-climatologicas-por-estado")
+
+        elif map_key == "eg":
+            st.subheader("📊 Presupuesto federal de egresos")
+            df = pd.DataFrame(EG_DATA)
+            st.dataframe(
+                df.style.highlight_max(axis=0, color="#FF0000"),
+                use_container_width=True
+            )
+
+            st.caption("Fuente: https://www.diputados.gob.mx/LeyesBiblio/abro/pef_2019/PEF_2019_abro.pdf y https://www.diputados.gob.mx/LeyesBiblio/abro/pef_2007/PEF_2007_abro.pdf")
+
+        elif map_key == "idh":
+            st.caption("Fuente: http://www.snim.rami.gob.mx")
+
+        elif map_key == "al":
+            st.caption("Fuente: https://www.inegi.org.mx/programas/ce/2024/#tabulados")
+
+        elif map_key == "es":
+            st.caption ("Fuente: https://www.inegi.org.mx/programas/ce/2024/#tabulados")
+
+        elif map_key == "po":
+            st.caption  ("Fuente: https://www.inegi.org.mx/programas/ccpv/2020/")
+# ------------------------- INTERFAZ -------------------------
+with st.sidebar:
+    st.image(r"C:\Users\eredm\Desktop\CentroGeo\II\SIG\Proyecto\Visor\CentroGeo-CMX_Logo-V.png", width=100)
+    st.title("Navegación")
+    st.write("---")
+
+    categoria = st.radio(
+        "Categorías principales",
+        ["Violencia", "Educación", "Gobernanza", "Economía","Ambiental"],
+        label_visibility="collapsed"
+    )
+
+# ------------------------- CONTENIDO PRINCIPAL -------------------------
+if categoria == "Violencia":
+    st.header("Violencia", divider="red")
+    tipo = st.radio(
+        "Variable",
+        ["Homicidios", "Desaparecidos"],
+        horizontal=True
+    )
+
+    if tipo == "Homicidios":
+        show_map_with_loading("homicidios", "✅ Datos de homicidios cargados")
+    else:
+        show_map_with_loading("desaparecidos", "✅ Datos de desaparecidos cargados")
+
+elif categoria == "Economía":
+    st.header("Economía", divider="violet")
+    tipo = st.radio(
+        "Índicador",
+        ["Índice de Marginación", "Población ocupada"],
+        horizontal=True
+    )
+
+    if tipo == "Índice de Marginación":
+        show_map_with_loading("im", "✅ Mapa del Índice de Marginación cargado")
+    else:
+        show_map_with_loading("po", "✅ Mapa cargado")
+
+elif categoria == "Gobernanza":
+    st.header("Gobernanza", divider="green")
+    tipo = st.radio(
+        "Indicador",
+        ["Índice de Desarrollo Humano", "Egreso"],
+        horizontal=True
+    )
+
+    if tipo == "Egreso":
+        show_map_with_loading("eg", "✅ Mapa cargado")
+    else:
+        show_map_with_loading("idh", "✅ Mapa cargado")
+
+elif categoria == "Educación":
+    st.header("Educación", divider="green")
+    tipo = st.radio(
+        "Indicador",
+        ["Escolaridad", "Alfabetismo"],
+        horizontal=True
+    )
+    if tipo == "Escolaridad":
+        show_map_with_loading("es", "✅ Mapa cargado")
+    else:
+        show_map_with_loading("al", "✅ Mapa cargado")
+
+elif categoria == "Ambiental":
+    st.header("Ambiental", divider="green")
+    tipo = st.radio(
+        "Indicador",
+        ["Temperaturas extremas y precipitación", "Vegetación"],
+        horizontal=True
+    )
+
+    if tipo == "Temperaturas extremas y precipitación":
+        show_map_with_loading("ppt", "✅ Mapas cargados")
+    else:
+        show_map_with_loading("usv", "✅ Datos cargados")
+# ------------------------- FOOTER -------------------------
+st.divider()
+st.caption(f"""
+    **CAMLOVISOR 3.0** | Visor de la trágedia mexicana. 
+    © {datetime.now().year} CentroGeo | Actualizado: {datetime.now().strftime('%d/%m/%Y')}
+    """)
