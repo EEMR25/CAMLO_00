@@ -1,0 +1,124 @@
+----- EJE TEMÁTICO: Educación -----
+--La finalidad de este apartado es conocer si hubo incremento o disminución de personas analfabetas con relación a la población total por estado, esta 
+--información se va desgregar por sexo. Los datos poblacionales corresponden al mismo censo del que se obtuvo la información de alfabestimo. También
+--se busca saber si hubo un incremento en los niveles educativos de la población, las preguntas que se buscan responder son las siguientes:
+
+--1. ¿Cuál es el porcentaje de personas alfabetas respecto al total poblacional estatal por sexenio, es decir, para el 2010 y el 2020?
+--2. Para cada año ¿Quienes presentan un mayor porcentaje de alfabetismo, los hombres o las mujeres?
+--3. De acuerdo con el total poblacional mayor de tres años ¿Cuántas personas no tenian escolaridad para cada año?
+--4. Comparando el promedio de población sin escolaridad ¿En qué año hay más personas sin escolaridad?
+--PREGUNTA 1. ¿Cuál es el porcentaje de personas alfabetas respecto al total poblacional por sexenio, es decir, para el 2010 y el 2020?
+
+--PARA EL AÑO 2010 CORRESPONDIENTE AL SEXENIO DE FELIPE CALDERON HINOJOSA
+---Consulta para los hombres--- 
+ALTER TABLE educacion.alfabetismo_2010 ADD porcent_alf_hom int8 NULL;
+
+ALTER TABLE educacion.alfabetismo_2010
+ALTER COLUMN porcent_alf_hom TYPE double precision
+USING porcent_alf_hom;
+
+ALTER TABLE educacion.alfabetismo_2010
+ALTER COLUMN porcent_alf_hom TYPE double precision;
+
+UPDATE educacion.alfabetismo_2010 
+SET porcent_alf_hom = ("hombres alfabetas"::FLOAT / pob_total_hombres) * 100;
+
+---Consulta para las mujeres---
+ALTER TABLE educacion.alfabetismo_2010 ADD porcent_alf_muj int8 NULL;
+
+ALTER TABLE educacion.alfabetismo_2010
+ALTER COLUMN porcent_alf_muj TYPE double precision;
+
+UPDATE educacion.alfabetismo_2010 
+SET porcent_alf_muj = ("mujeres alfabetas"::FLOAT / pob_total_mujeres::FLOAT) * 100;
+
+--PARA EL AÑO 2020 CORRESPONDIENTE AL SEXENIO DE ANDRÉS MANUEL LÓPEZ OBRADOR
+---Consulta para los hombres--- 
+ALTER TABLE educacion.alfabetismo_2020 ADD porcent_alf_hom int8 NULL;
+
+ALTER TABLE educacion.alfabetismo_2020
+ALTER COLUMN porcent_alf_hom TYPE double precision
+USING porcent_alf_hom;
+
+UPDATE educacion.alfabetismo_2020 
+SET porcent_alf_hom = ("hombres alfabetas"::FLOAT / pob_hombres::FLOAT) * 100;
+
+---Consulta para las mujeres--- 
+ALTER TABLE educacion.alfabetismo_2020 ADD porcent_alf_muj int8 NULL;
+
+ALTER TABLE educacion.alfabetismo_2020
+ALTER COLUMN porcent_alf_muj TYPE double precision
+USING porcent_alf_muj;
+
+UPDATE educacion.alfabetismo_2020 
+SET porcent_alf_muj = ("mujeres alfabetas"::FLOAT / pob_mujeres::FLOAT) * 100;
+
+
+--PREGUNTA 2. Para cada año ¿Quienes presentan un mayor porcentaje de alfabetismo, los hombres o las mujeres?
+---Para responder esta pregunta de manera generalizada, para cada columna nueva creada en el 2010 y 2020, las cuales se nombraron como 
+---porcent_alf_muj y porcent_alf_hom se sacó el promedio general, con la finalidad de saber el estado general para cada persona
+
+--- Para el 2010
+
+--- Para los hombres
+SELECT AVG(porcent_alf_hom) AS promedio_alfabetismo_hombres
+FROM educacion.alfabetismo_2010;
+
+--RESPUESTA: 64.1663417653494
+
+--- Para las mujeres
+SELECT AVG(porcent_alf_muj) AS promedio_alfabetismo_mujeres
+FROM educacion.alfabetismo_2010; 
+--RESPUESTA: 64.54876210607682
+
+--- Para el 2020
+
+--- Para los hombres
+SELECT AVG(porcent_alf_hom) AS promedio_alfabetismo_hombres
+FROM educacion.alfabetismo_2020;
+
+--RESPUESTA: 70.1415705972701
+
+--- Para las mujeres
+SELECT AVG(porcent_alf_muj) AS promedio_alfabetismo_mujeres
+FROM educacion.alfabetismo_2020; 
+--RESPUESTA: 70.88883995089455
+
+
+--PREGUNTA 3. De acuerdo con el total poblacional estatal mayor de tres años ¿Cuántas personas no tenian escolaridad para cada año?
+
+--PARA EL AÑO 2010 CORRESPONDIENTE AL SEXENIO DE FELIPE CALDERON HINOJOSA
+---Consulta para los hombres--- 
+ALTER TABLE educacion.escolaridad_2010 ADD porcent_esc int8 NULL;
+
+ALTER TABLE educacion.escolaridad_2010
+ALTER COLUMN porcent_esc TYPE double precision
+USING porcent_esc;
+
+UPDATE educacion.escolaridad_2010 
+SET porcent_esc = ("sin escolaridad"::FLOAT / "poblaci�n de 3 a�os y m�s"::FLOAT) * 100;
+
+--PARA EL AÑO 2020 CORRESPONDIENTE AL SEXENIO DE ANDRÉS MANUEL LÓPEZ OBRADOR
+---Consulta para los hombres--- 
+ALTER TABLE educacion.escolaridad_2020 ADD porcent_esc int8 NULL;
+
+ALTER TABLE educacion.escolaridad_2020
+ALTER COLUMN porcent_esc TYPE double precision
+USING porcent_esc;
+
+UPDATE educacion.escolaridad_2020 
+SET porcent_esc = ("sin escolaridad"::FLOAT / "poblaci�n de 3 a�os y m�s"::FLOAT) * 100;
+
+--- Para el 2010
+
+SELECT AVG(porcent_esc) AS promedio_sin_escolaridad 
+FROM educacion.escolaridad_2010;
+
+--RESPUESTA: 8.413321556362016
+
+--- Para el 2020
+SELECT AVG(porcent_esc) AS promedio_sin_escolaridad 
+FROM educacion.escolaridad_2020;
+
+--RESPUESTA: 6.366026720307837
+
