@@ -1,0 +1,90 @@
+----- EJE TEMÁTICO: Violencia -----
+---------- Discriminación laboral ----------
+--En este caso se busca conocer si las condiciones respecto a la discriminación laboral cambiaron para las mujeres, por lo que
+--se busca responder a las siguientes preguntas:
+
+--1.Para cada año ¿Cuál es el tipo de discriminación principal?
+--2. ¿En qué año se reportan más incidencias?
+
+--PREGUNTA 1. Para cada año ¿Cuál es el tipo de discriminación principal?
+SELECT *
+FROM violencia."v.endireh_2011_2021_"
+ORDER BY "2011_fch" DESC;
+
+SELECT *
+FROM violencia."v.endireh_2011_2021_"
+ORDER BY "2021_amlo" DESC;
+
+--RESPUESTA: En el caso del sexenio del Felipe Calderón la razón principal de discriminación es "por su edad, por su estado civil 
+--o porque tiene hijos pequenos, no la contrataron, le bajaron el salario o la despidieron" y para el de AMLO es porque "ha recibido
+-- menos prestaciones que un hombre que tiene el mismo nivel o puesto"
+
+--PREGUNTA 2. ¿En qué año se reportan más incidencias?
+
+ALTER TABLE violencia."v.endireh_2011_2021_"
+ADD COLUMN dif_inc numeric;
+
+UPDATE violencia."v.endireh_2011_2021_"
+SET dif_inc = CAST("2021_amlo" AS numeric) - CAST("2011_fch" AS numeric);
+
+SELECT *
+FROM violencia."v.endireh_2011_2021_"
+ORDER BY dif_inc DESC;
+
+--RESPUESTA: La diferencia entre los incidentes resportados en la encuesta dice que la discriminación laboral hacía las mujeres aumentó ya que
+--hay más reporte de mujeres que sufrieron discriminación laboral durante ese sexenia ya que se pasó de 3835482 a 3860473
+
+
+---------- Homicidios ----------
+ALTER TABLE violencia.homicid_amlo ALTER COLUMN total TYPE int4 USING total::int4;
+ALTER TABLE violencia.homicid_amlo ALTER COLUMN mujer TYPE int4 USING mujer::int4;
+ALTER TABLE violencia.homicid_amlo ALTER COLUMN hombre TYPE int4 USING hombre::int4;
+ALTER TABLE violencia.homicid_fecal ALTER COLUMN total TYPE int4 USING total::int4;
+ALTER TABLE violencia.homicid_fecal ALTER COLUMN mujer TYPE int4 USING mujer::int4;
+ALTER TABLE violencia.homicid_fecal ALTER COLUMN hombre TYPE int4 USING hombre::int4;
+
+select --Estas consultas son para encontrar la suma por género y sexenio de homicidios
+ sum (ha.total) as total, sum (ha.hombre) as hombre, sum(ha.mujer) as mujer
+ from violencia.homicid_amlo ha; 
+
+select 
+ sum (ha.total) as total, sum (ha.hombre) as hombre, sum(ha.mujer) as mujer
+ from violencia.homicid_fecal ha; 
+
+---------- Desaparecidos ----------
+
+ALTER TABLE violencia.amlodesa ALTER COLUMN desap TYPE int4 USING desap::int4;
+ALTER TABLE violencia.calderondesa ALTER COLUMN desap TYPE int4 USING desap::int4;
+
+select 
+ sum (ha.desap) 
+ from violencia.amlodesa ha; 
+
+select 
+ sum (ha.desap) 
+ from violencia.calderondesa ha; 
+
+--Consulta para encontrar homicidios por estado por sexenio. 
+WITH AMLO AS (
+    SELECT 
+        ha.cve_ent,
+        SUM(ha.sum::integer) AS total_amlo
+    FROM violencia.h_total_amlo ha
+    GROUP BY ha.cve_ent
+),
+Calderon AS (
+    SELECT 
+        hf.cve_ent,
+        hf.nom_ent,
+        SUM(hf.sum::integer) AS total_calderon
+    FROM violencia.h_total_fecal hf
+    GROUP BY hf.cve_ent, hf.nom_ent
+)
+SELECT 
+    c.cve_ent,
+    c.nom_ent,
+    a.total_amlo,
+    c.total_calderon
+FROM Calderon c
+LEFT JOIN AMLO a ON a.cve_ent = c.cve_ent
+ORDER BY c.cve_ent;
