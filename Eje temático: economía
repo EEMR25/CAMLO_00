@@ -1,0 +1,324 @@
+----- EJE TEMÁTICO: Economía -----
+---------- Población ocupada ----------
+--La finalidad de este apartado es conocer la población ocupada respecto al total poblacional para el 2009 y el 2019, estos años son representativos
+--de cada sexenio, esta comparación se va desagregar por sexo y las preguntas que se buscan responder son las siguientes:
+
+--1. Según el sexo ¿Qué porcentaje de población ocupada hay para cada año, el 2009 y el 2019 respecto a las proyecciones poblacionales de la CONAPO?
+--2. Comparando el promedio de población ocupada ¿En qué año hay más población ocupada?
+
+--PARA EL AÑO 2009 CORRESPONDIENTE AL SEXENIO DE FELIPE CALDERON HINOJOSA
+---Consulta para los hombres--- 
+ALTER TABLE economia.pob_ocupada_2009 ADD porcent_po_hom int8 NULL;
+
+ALTER TABLE economia.pob_ocupada_2009
+ALTER COLUMN porcent_po_hom TYPE double precision
+USING porcent_po_hom;
+
+UPDATE economia.pob_ocupada_2009
+SET porcent_po_hom = (po_hombres::FLOAT / pob_hombres_conapo::FLOAT) * 100;
+
+---Consulta para las mujeres---
+ALTER TABLE economia.pob_ocupada_2009 ADD porcent_po_muj int8 NULL;
+
+ALTER TABLE economia.pob_ocupada_2009
+ALTER COLUMN porcent_po_muj TYPE double precision
+USING porcent_po_muj;
+
+UPDATE economia.pob_ocupada_2009
+SET porcent_po_muj = (po_mujeres::FLOAT / pob_mujeres_conapo::FLOAT) * 100;
+
+
+
+--PARA EL AÑO 2020 CORRESPONDIENTE AL SEXENIO DE ANDRÉS MANUEL LÓPEZ OBRADOR
+---Consulta para los hombres--- 
+ALTER TABLE economia.pob_ocupada_2019 ADD porcent_po_hom int8 NULL;
+
+ALTER TABLE economia.pob_ocupada_2019
+ALTER COLUMN porcent_po_hom TYPE double precision
+USING porcent_po_hom;
+
+UPDATE economia.pob_ocupada_2019
+SET porcent_po_hom = (po_hombres::FLOAT / pob_hombres_conapo::FLOAT) * 100;
+
+
+---Consulta para las mujeres--- 
+ALTER TABLE economia.pob_ocupada_2019 ADD porcent_po_muj int8 NULL;
+
+ALTER TABLE economia.pob_ocupada_2019
+ALTER COLUMN porcent_po_muj TYPE double precision
+USING porcent_po_muj;
+
+UPDATE economia.pob_ocupada_2019
+SET porcent_po_muj = (po_mujeres::FLOAT / pob_mujeres_conapo::FLOAT) * 100;
+
+---------- Balanza de importaciones y exportaciones de productos agropecuarios ----------
+--Para este apartado se seleccionaron productos estrátegicos los cuales son de importancia cultural y agronómica en México,
+--estos son: maíz, frijol, trigo, arroz, carne de res, pollo, cerdo, leche, huevo y mariscos. Las preguntas que se buscan responder
+--son las siguientes:
+
+--1. Para cada sexenio ¿Cuál es el principal producto de importación?
+--2. Para cada sexenio ¿Cuál es el principal producto de exportación?
+--3. Haciendo una comparativa de los productos estratégicos, ¿Hubo un incremento o un decremento de las importaciones?
+--4. Haciendo una comparativa de los productos estratégicos, ¿Hubo un incremento o un decremento de las exportaciones? 
+
+--Para los productos de importación, se va crear una tabla de las importaciones acumuladas por productos estratégicos
+CREATE TABLE balanza_comp AS
+SELECT producto, general_amlo
+FROM economia."eco.importaciones"
+WHERE id IN (9, 5, 22, 2, 6, 7, 15, 17)
+ORDER BY CASE id
+  WHEN 9 THEN 1
+  WHEN 5 THEN 2
+  WHEN 22 THEN 3
+  WHEN 2 THEN 4
+  WHEN 6 THEN 5
+  WHEN 7 THEN 6
+  WHEN 15 THEN 7
+  WHEN 17 THEN 8
+END;
+
+ALTER TABLE balanza_comp
+ADD COLUMN general_fch varchar(100);
+
+UPDATE balanza_comp bc
+SET general_fch = ei.general_fch
+FROM economia."eco.importaciones" ei
+WHERE bc.producto = ei.producto
+  AND ei.id IN (9, 5, 22, 2, 6, 7, 15, 17);
+
+ALTER TABLE balanza_comp
+RENAME COLUMN general_fch TO importaciones_fch;
+
+ALTER TABLE balanza_comp
+RENAME COLUMN general_amlo TO importaciones_amlo;
+
+ALTER TABLE balanza_comp
+RENAME TO balanza_importaciones;
+
+--También se va agregar una columna en la cual se pueda ver la diferencia en el
+--gasto por exportaciones
+
+ALTER TABLE balanza_importaciones
+ADD COLUMN dif_exp numeric;
+
+UPDATE balanza_importaciones
+SET dif_exp = CAST(importaciones_amlo AS numeric) - CAST(importaciones_fch AS numeric);
+
+--Para los productos de exportación, se va crear una tabla de las exportaciones acumuladas por productos estratégicos de los cuales hubo coincidencia
+--con la lista seleccionada
+
+CREATE TABLE balanza_exportaciones AS
+SELECT producto, general_amlo
+FROM economia."eco.exportaciones"
+WHERE id IN (15, 10, 25, 12, 20, 5)
+ORDER BY CASE id
+  WHEN 15 THEN 1
+  WHEN 10 THEN 2
+  WHEN 25 THEN 3
+  WHEN 12 THEN 4
+  WHEN 20 THEN 5
+  WHEN 5 THEN 6
+END;
+
+ALTER TABLE economia.balanza_exportaciones
+ADD COLUMN general_fch varchar(100);
+
+UPDATE economia.balanza_exportaciones be 
+SET general_fch = ex.general_fch
+FROM economia."eco.exportaciones" ex
+WHERE be.producto = ex.producto
+  AND ex.id IN (15, 10, 25, 12, 20, 5);
+
+--También se va agregar una columna en la cual se pueda ver la diferencia en el
+--gasto por exportaciones
+
+ALTER TABLE balanza_exportaciones
+ADD COLUMN dif_exp numeric;
+
+UPDATE balanza_exportaciones
+SET dif_exp = CAST(general_amlo AS numeric) - CAST(general_fch AS numeric);
+
+
+--Ya que se cuenta con la información organizada, se puede comenzar con las consultas:
+--1. Para cada sexenio ¿Cuál es el principal producto de importación?
+
+SELECT *
+FROM balanza_importaciones
+ORDER BY importaciones_amlo DESC;
+ 
+SELECT *
+FROM balanza_importaciones
+ORDER BY importaciones_fch DESC;
+
+--RESPUESTA: En el caso del sexenio de AMLO el principal producto de importación fue el frijol
+--y para Felipe Calderon fueron los pescados, crustáceos y moluscos
+
+
+--2. Para cada sexenio ¿Cuál es el principal producto de exportación?
+SELECT *
+FROM economia.balanza_exportaciones
+ORDER BY general_amlo DESC;
+ 
+SELECT *
+from economia.balanza_exportaciones
+ORDER BY general_fch DESC;
+
+--RESPUESTA: Para AMLO el principal producto de exportación fue el ganado vacuno y para Calderón fue el maíz
+
+--3. Haciendo una comparativa de los productos estratégicos, ¿Hubo un incremento o un decremento de las importaciones?
+
+ALTER TABLE economia.balanza_importaciones
+RENAME COLUMN dif_exp TO dif_imp;
+
+SELECT *
+FROM balanza_importaciones
+ORDER BY dif_imp DESC;
+
+--RESPUESTA: Lo que se puedo observar en la diferencia de importaciones es que el gasto para las importaciones del periodo
+--2018-2024 se redujo en todos los productos estratégicos elegiso, el producto en el que mayormente se redujo la importación fue el maíz,
+--seguido de la semilla de soya y el trigo.
+
+
+--4. Haciendo una comparativa de los productos estratégicos, ¿Hubo un incremento o un decremento de las exportaciones? 
+
+SELECT *
+FROM balanza_exportaciones
+ORDER BY dif_exp DESC;
+
+--RESPUESTA: Para el caso del trigo y el camarón congelado el ingreso por exportaciones redujeron, pero en el caso del ganado vacuno,
+--otro pescados, crustáceos y moluscos, maíz y frijol las exportaciones incrementaron.
+
+
+----------Índice de Marginación ---------- 
+-- Casteamos el índice normalizado.
+ALTER TABLE economia.imarginacion10 ALTER COLUMN imn_2010 TYPE float4 USING imn_2010::float4;
+ALTER TABLE economia.imarginacion20 ALTER COLUMN imn_2020 TYPE float4 USING imn_2020::float4;
+
+--Encontremos el promedio por estado  IM
+WITH AMLO AS (
+    SELECT 
+        ha.cve_ent,
+        Avg(ha.imn_2010) AS im_amlo
+    FROM economia.imarginacion10 ha
+    GROUP BY ha.cve_ent
+),
+Calderon AS (
+    SELECT 
+        hf.cve_ent,
+        hf.nom_ent,
+        AVG(hf.imn_2020) AS im_calderon
+    FROM economia.imarginacion20 hf
+    GROUP BY hf.cve_ent, hf.nom_ent
+)
+SELECT 
+    c.cve_ent,
+    c.nom_ent,
+    a.im_amlo,
+    c.im_calderon
+FROM Calderon c
+LEFT JOIN AMLO a ON a.cve_ent = c.cve_ent
+ORDER BY c.cve_ent;
+
+--Promedio nacional IM
+
+WITH AMLO AS (
+    SELECT 
+        AVG(imn_2010) AS im_amlo
+    FROM economia.imarginacion10
+),
+Calderon AS (
+    SELECT 
+        AVG(imn_2020) AS im_calderon
+    FROM economia.imarginacion20
+)
+SELECT 
+    im_amlo,
+    im_calderon,
+    im_calderon - im_amlo AS diferencia
+FROM AMLO, Calderon;
+
+
+--------- Distribución de Egresos Estatales  ---------- 
+
+-- VARIABLE DISTRIBUCIÓN DE EGRESOS ESTATALES DEL AÑO 2019 --
+
+ALTER TABLE economia.dist2019_est ALTER COLUMN cveent TYPE int4 USING cveent::int4;
+
+-- Se crea tabla de la distribución estatal del ejercicio presupuestal 2019 
+CREATE table economia.dist_est_2019 AS
+SELECT 
+    cd.*,  -- tabla sin geometria
+  	e.geom 	 -- tabla con geometría
+FROM 
+    economia."dist2019_est" cd 
+JOIN 
+    public.estadosc e
+    ON e.cve_ent = cd.cveent;
+
+-- se castea la columna valor para poder categorizar por rangos en QGIS --
+ALTER TABLE economia.dist_est_2019 ALTER COLUMN valor TYPE int8 USING valor::int8;
+
+
+-- VARIALE DISTRIBUCIÓN DE EGRESOS POR ENTIDAD FEDERATIVA DEL PERIODO 2007 --
+
+-- se castea la columna cveent a int4
+ALTER TABLE economia.dis_est_egresos2007 ALTER COLUMN cveent TYPE int4 USING cveent::int4;
+
+
+-- Se crea tabla de la distribución estatal del ejercicio presupuestal 2007 
+
+CREATE table economia.dist_est_2007 AS
+SELECT 
+    cd.*,  -- tabla sin geometria
+  	e.geom 	 -- tabla con geometría
+FROM 
+    economia."dis_est_egresos2007" cd 
+JOIN 
+    public.estadosc e
+    ON e.cve_ent = cd.cveent;
+
+    
+-- se castea la columna valor para poder categorizar por rangos
+ALTER TABLE economia.dist_est_2007 ALTER COLUMN valor TYPE int8 USING valor::int8;
+
+-- VARIALE DISTRIBUCIÓN DE EGRESOS POR ENTIDAD FEDERATIVA DEL PERIODO 2007 --
+-- VARIABLE DISTRIBUCIÓN DE EGRESOS ESTATALES DEL AÑO 2019 --
+--ALGUNAS CONSULTAS DE MÍNIMOS Y MÁXIMOS DE AMBOS PERIODOS --
+
+--PREGUNTA 1. ¿Cuales son los diez estados con mayores egresos ejercidos en 2007?
+
+SELECT noment, valor
+FROM economia.dist_est_2007
+ORDER BY valor desc
+limit 10;
+-- Estado de México, Ciudad de México y Veracruz ocupan los tres primeros sitios --
+
+--PREGUNTA 2. ¿Cuales son los diez estados con menores egresos ejercidos en 2007?
+
+SELECT noment, valor
+FROM economia.dist_est_2007
+ORDER BY valor asc
+limit 10;
+
+-- Para este periodo Colima es el menor seguido de Baja California Sur, en la posición 10 se encontraba Durango --
+-- A nivel estatal Aguascalientes es dl quinto lugar con menores egresos ejercidos a diferencia del nivel municipal que ocupa las primeras posiciones--
+
+-- PREGUNTA 3. Qué paso en el periodo 2019?
+
+SELECT noment, valor
+FROM economia.dist_est_2019
+ORDER BY valor asc
+limit 10;
+
+-- Colima paso al segundo y Baja California Sur al primero, mientras que Durango conserva la posición 10--
+-- A esta lista se añadió Zacatecas y salió Yucatan, sin alcanzar a entrar a los priemros 15, el resto solo fueron variaciones de lugar --
+
+--PREGUNTA 4. ¿Cuales son los diez estados con mayores egresos ejercidos en 2019?
+
+SELECT noment, valor
+FROM economia.dist_est_2019
+ORDER BY valor desc
+limit 10;
+
+-- Se mantienen los mismos estados excepto Guanajuato y Chihuahua que desplazaron a Michoacan y a Tamaulipas--
+-- Nuevo León paso del séptimo sitio al quinto y Oaxaca paso del octavo al décimo lugar--
